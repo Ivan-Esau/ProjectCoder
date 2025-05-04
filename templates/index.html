@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>LLM-IDE Projektplaner</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="ide-header">
+    <div class="ide-logo">💻 LLM-IDE</div>
+    <div class="ide-user">
+      Angemeldet als {{ username }} |
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+    <nav class="ide-menu">
+      <span>Datei</span><span>Bearbeiten</span><span>Ansicht</span><span>Hilfe</span>
+    </nav>
+  </header>
+
+  <div class="ide-tabs">
+    <div class="tab active">Projektplan</div>
+    <div class="tab">Tickets</div>
+    <div class="tab">Explorer</div>
+  </div>
+
+  <div class="ide-workspace">
+    <aside class="ide-sidebar">
+      <h3>API-Einstellungen</h3>
+      <input type="text" id="api_url"  placeholder="API-URL">
+      <input type="text" id="api_key" placeholder="API-Key (optional)">
+      <input type="text" id="model"   placeholder="Modell (optional)">
+    </aside>
+
+    <main class="ide-main">
+      <!-- Schritt 1: Projekt definieren -->
+      <section class="ide-panel" id="panel-plan">
+        <h2>1. Projekt definieren</h2>
+        <input type="text" id="project_name" placeholder="Projektname">
+        <textarea id="project_desc" placeholder="Projektbeschreibung…"></textarea>
+        <input type="text" id="project_path" placeholder="Projektpfad (z.B. C:/Users/...)">
+        <button id="plan-btn">Projekt planen</button>
+        <pre id="plan-output" class="code-view"></pre>
+      </section>
+
+      <!-- Schritt 2: Tickets generieren & Kanban -->
+      <section class="ide-panel" id="panel-tickets">
+        <h2>2. Tickets generieren & Kanban</h2>
+        <button id="tickets-btn" disabled>Tickets generieren</button>
+        <div class="kanban-board">
+          <div class="kanban-column">
+            <h3>Todo</h3>
+            <div id="todo-tasks"></div>
+          </div>
+          <div class="kanban-column">
+            <h3>Tests</h3>
+            <div id="tests-tasks"></div>
+          </div>
+          <div class="kanban-column">
+            <h3>In Progress</h3>
+            <div id="inprogress-tasks"></div>
+          </div>
+          <div class="kanban-column">
+            <h3>Done</h3>
+            <div id="done-tasks"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Schritt 3: Projekt-Explorer -->
+      <section class="ide-panel" id="panel-explorer">
+        <h2>3. Projekt-Explorer</h2>
+        <div id="file-explorer" class="explorer" data-path=""></div>
+        <pre id="file-content" class="code-view"></pre>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    let projectFolder = "", planText = "", tickets = [];
+
+    function clearKanban() {
+      ["todo-tasks","tests-tasks","inprogress-tasks","done-tasks"]
+        .forEach(id => document.getElementById(id).innerHTML = "");
+    }
+
+    async function loadStructure() {
+      const ex = document.getElementById("file-explorer");
+      ex.innerHTML = "⏳ Lade Projektstruktur…";
+      ex.dataset.path = "";
+      const resp = await fetch("/structure", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ project_folder: projectFolder })
+      });
+      const data = await resp.json();
+      if (!(resp.ok && data.structure)) {
+        ex.textContent = "❌ " + (data.error || resp.statusText);
+        return;
+      }
+      ex.textContent = "";
+      renderExplorer(data.structure, ex);
+    }
+
+    function renderExplorer(tree, container) {
+      const ul = document.createElement("ul");
+      for (const name in tree) {
+        const li = document.createElement("li");
+        if (tree[name] === null) {
+          const span = document.createElement("span");
+          span.textContent  = name;
+          span.className    = "file-item";
+          span.dataset.path = (container.dataset.path || "") + name;
+          li.appendChild(span);
+        } else {
+          const details = document.createElement("details");
+          details.dataset.path = (container.dataset.path || "") + name + "/";
+          const summary = document.createElement("summary");
+          summary.textContent = name;
+          details.appendChild(summary);
+          renderExplorer(tree[name], details);
+          li.appendChild(details);
+        }
+        ul.appendChild(li);
+      }
+      container.appendChild(ul);
+    }
+
+    document.getElementById("file-explorer").addEventListener("click", async e => {
+      if (e.target.classList.contains("file-item")) {
+        const path = e.target.dataset.path;
+        const resp = await fetch("/file_content", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            project_folder: projectFolder,
+            file_path:      path
+          })
+        });
+        const data = await resp.json();
+        document.getElementById("file-content").textContent =
+          (resp.ok && data.content) ? data.content
+                                   : "❌ " + (data.error || resp.statusText);
+      }
+    });
+
+    document.getElementById("plan-btn").onclick = async () => {
+      const btn    = document.getElementById("plan-btn");
+      const out    = document.getElementById("plan-output");
+      const url    = document.getElementById("api_url").value.trim();
+      const key    = document.getElementById("api_key").value.trim();
+      const model  = document.getElementById("model").value.trim();
+      const name   = document.getElementById("project_name").value.trim();
+      const desc   = document.getElementById("project_desc").value.trim();
+      const path   = document.getElementById("project_path").value.trim();
+
+      btn.disabled = true;
+      out.textContent = "⏳ Plane…";
+
+      const resp = await fetch("/plan", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          api_url:      url,
+          api_key:      key,
+          model:        model,
+          project_name: name,
+          project_desc: desc,
+          project_path: path
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.plan) {
+        projectFolder   = data.project_folder;
+        planText        = data.plan;
+        out.textContent = planText;
+        document.getElementById("tickets-btn").disabled = false;
+        await loadStructure();
+      } else {
+        out.textContent = "❌ " + (data.error || resp.statusText);
+      }
+      btn.disabled = false;
+    };
+
+    document.getElementById("tickets-btn").onclick = async () => {
+      const btn     = document.getElementById("tickets-btn");
+      const todoC   = document.getElementById("todo-tasks");
+      const testsC  = document.getElementById("tests-tasks");
+      const inProgC = document.getElementById("inprogress-tasks");
+      const doneC   = document.getElementById("done-tasks");
+
+      btn.disabled = true;
+      clearKanban();
+      todoC.textContent = "⏳ Generiere Tickets…";
+
+      const resp = await fetch("/tickets", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          api_url:        document.getElementById("api_url").value.trim(),
+          api_key:        document.getElementById("api_key").value.trim(),
+          model:          document.getElementById("model").value.trim(),
+          project_folder: projectFolder,
+          plan_text:      planText
+        })
+      });
+      const data = await resp.json();
+      if (!(resp.ok && Array.isArray(data.tickets))) {
+        todoC.textContent = "❌ " + (data.error || resp.statusText);
+        btn.disabled = false;
+        return;
+      }
+
+      tickets = data.tickets;
+      todoC.textContent = "";
+      tickets.forEach((t,i) => {
+        const det = document.createElement("details");
+        det.className   = "task-card";
+        det.dataset.idx = i;
+        det.innerHTML = `
+          <summary>${t.title} — <em>${t.file_path}</em></summary>
+          <div class="details-content">
+            <p><strong>Beschreibung:</strong> ${t.beschreibung}</p>
+            <p><strong>Anforderungen:</strong></p>
+            <pre>${t.anforderungen.join('\n')}</pre>
+            <pre class="test-area"></pre>
+            <pre class="code-area"></pre>
+          </div>`;
+        todoC.appendChild(det);
+      });
+
+      for (let i = 0; i < tickets.length; i++) {
+        const det      = document.querySelector(`.task-card[data-idx="${i}"]`);
+        const testArea = det.querySelector(".test-area");
+        const codeArea = det.querySelector(".code-area");
+        const ticket   = tickets[i];
+
+        testsC.appendChild(det);
+        det.open = true;
+        testArea.textContent = "⏳ Generiere Tests…";
+        const respT = await fetch("/generate_tests", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            api_url:        document.getElementById("api_url").value.trim(),
+            api_key:        document.getElementById("api_key").value.trim(),
+            model:          document.getElementById("model").value.trim(),
+            project_folder: projectFolder,
+            ticket:         ticket
+          })
+        });
+        const resT = await respT.json();
+        testArea.textContent = (respT.ok && resT.tests)
+                               ? resT.tests
+                               : "❌ " + (resT.error || respT.statusText);
+        det.open = false;
+
+        inProgC.appendChild(det);
+        codeArea.textContent = "⏳ Generiere Code…";
+        const respC = await fetch("/generate_code", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            api_url:        document.getElementById("api_url").value.trim(),
+            api_key:        document.getElementById("api_key").value.trim(),
+            model:          document.getElementById("model").value.trim(),
+            project_folder: projectFolder,
+            ticket:         ticket
+          })
+        });
+        const resC = await respC.json();
+        codeArea.textContent = (respC.ok && resC.code)
+                               ? resC.code
+                               : "❌ " + (resC.error || respC.statusText);
+        det.open = false;
+        doneC.appendChild(det);
+      }
+
+      await loadStructure();
+      btn.disabled = false;
+    };
+  </script>
+</body>
+</html>

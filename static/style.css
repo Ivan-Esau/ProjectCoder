@@ -1,0 +1,71 @@
+:root {
+  --bg: #1e1e1e; --bg-panel: #252526; --fg: #d4d4d4; --fg-muted: #808080;
+  --accent: #007acc; --border: #3c3c3c; --btn-bg: #0e639c; --btn-hover: #1177bb;
+  --font-code: "Fira Code", monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body {
+  background:var(--bg); color:var(--fg);
+  font-family:var(--font-code); display:flex; flex-direction:column; height:100vh;
+}
+/* Header */
+.ide-header { display:flex; align-items:center;
+  background:var(--bg-panel); padding:0 1rem; height:2.5rem; border-bottom:1px solid var(--border);}
+.ide-logo{font-weight:bold;margin-right:2rem;}
+.ide-user{margin-left:auto;margin-right:1rem;font-size:.9rem;}
+.ide-user a{color:var(--accent);text-decoration:none;}
+.ide-user a:hover{text-decoration:underline;}
+.ide-menu span{margin-right:1rem;color:var(--fg-muted);font-size:.9rem;}
+/* Tabs */
+.ide-tabs{display:flex;background:var(--bg-panel);border-bottom:1px solid var(--border);height:2rem;}
+.tab{padding:0 1rem;display:flex;align-items:center;color:var(--fg-muted);cursor:pointer;font-size:.9rem;}
+.tab.active{color:var(--fg);border-bottom:2px solid var(--accent);}
+/* Workspace */
+.ide-workspace{display:flex;flex:1;overflow:hidden;}
+.ide-sidebar{width:250px;background:var(--bg-panel);border-right:1px solid var(--border);padding:1rem;display:flex;flex-direction:column;}
+.ide-sidebar h3{margin-bottom:.5rem;color:var(--fg-muted);font-size:.9rem;}
+.ide-sidebar input{background:#333;border:1px solid var(--border);color:var(--fg);padding:.4rem;margin-bottom:.5rem;border-radius:2px;font-family:var(--font-code);}
+/* Main */
+.ide-main{flex:1;display:flex;flex-direction:column;padding:1rem;overflow-y:auto;}
+.ide-panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:4px;padding:1rem;margin-bottom:1rem;}
+.ide-panel h2{margin-bottom:.5rem;font-size:1.1rem;color:var(--accent);}
+/* Inputs & Buttons */
+.ide-panel textarea{width:100%;height:4rem;background:#2a2d2e;border:1px solid var(--border);color:var(--fg);padding:.5rem;border-radius:2px;resize:vertical;font-family:var(--font-code);}
+.ide-panel button{background:var(--btn-bg);color:#fff;border:none;padding:.4rem .8rem;margin-top:.5rem;border-radius:2px;cursor:pointer;font-family:var(--font-code);}
+.ide-panel button:hover{background:var(--btn-hover);}
+/* Code Viewer */
+.code-view{background:#1e1e1e;border:1px solid var(--border);border-radius:2px;padding:.5rem;margin-top:.5rem;max-height:200px;overflow:auto;font-family:var(--font-code);font-size:.9rem;}
+/* Kanban */
+.kanban-board{display:flex;gap:1rem;margin-top:1rem;}
+.kanban-column{flex:1;background:#2a2d2e;border:1px solid var(--border);border-radius:4px;padding:.5rem;min-height:20rem;display:flex;flex-direction:column;}
+.kanban-column h3{margin-bottom:.5rem;font-size:1rem;color:var(--fg);}
+.task-card{background:#333;border:1px solid var(--border);border-radius:4px;margin-bottom:.5rem;padding:.5rem;}
+.task-card summary{cursor:pointer;list-style:none;color:var(--accent);font-size:.95rem;}
+.task-card summary::marker{display:none;}
+.task-card details[open] summary{color:#9cdcfe;}
+.task-card pre{background:#1e1e1e;border:1px solid var(--border);border-radius:2px;padding:.5rem;margin-top:.5rem;font-family:var(--font-code);font-size:.9rem;max-height:150px;overflow:auto;}
+/* Explorer */
+.explorer ul{list-style:none;padding-left:1rem;}
+.explorer li{margin:.2rem 0;}
+.file-item{color:var(--fg);cursor:pointer;}
+.file-item:hover{text-decoration:underline;}
+/* Login/Register */
+.login-page{background:var(--bg);display:flex;align-items:center;justify-content:center;height:100vh;}
+.login-container{background:var(--bg-panel);padding:2rem;border:1px solid var(--border);border-radius:4px;width:300px;}
+.login-container h2{margin-bottom:1rem;color:var(--accent);}
+.login-container input{width:100%;padding:.5rem;margin-bottom:.5rem;background:#333;border:1px solid var(--border);color:var(--fg);border-radius:2px;font-family:var(--font-code);}
+.login-container button{width:100%;padding:.5rem;background:var(--btn-bg);border:none;color:#fff;cursor:pointer;font-family:var(--font-code);border-radius:2px;}
+.login-container .flashes{list-style:none;margin-bottom:1rem;}
+.login-container .flashes li{color:#e06c75;font-size:.9rem;}
+/* Projektname-Feld in den Panels */
+.ide-panel input[type="text"] {
+  width: 100%;
+  background: #2a2d2e;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: .5rem;
+  margin-bottom: .75rem;
+  border-radius: 2px;
+  font-family: var(--font-code);
+  font-size: .95rem;
+}

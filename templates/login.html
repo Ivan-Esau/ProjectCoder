@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Login – LLM-IDE</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <h2>Anmelden</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+      <input type="text" name="username" placeholder="Benutzername" required>
+      <input type="password" name="password" placeholder="Passwort" required>
+      <button type="submit">Login</button>
+    </form>
+    <p>Noch keinen Account? <a href="{{ url_for('register') }}">Registrieren</a></p>
+  </div>
+</body>
+</html>
