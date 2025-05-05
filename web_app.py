@@ -1,3 +1,13 @@
+# web_app.py
+
+"""
+Dieses Modul definiert und konfiguriert die Flask-Anwendung für das Projekt-Management-Tool.
+Es beinhaltet:
+- Benutzer-Authentifizierung (Registrierung, Login, Logout)
+- Endpunkte zur Projektplanung, Ticket-Generierung, Test- und Code-Erstellung
+- Speicherung und Abruf von Logs, Projektstruktur und Dateiinhalten
+"""
+
 import os
 from flask import (
     Flask, render_template, request,
@@ -20,7 +30,17 @@ from planner.ticket_generator import generate_tickets
 from planner.test_generator   import generate_tests
 from planner.code_generator   import generate_code_for_ticket
 
+
 def create_app(config: dict = None) -> Flask:
+    """
+    Erzeugt und konfiguriert eine Flask-Anwendung mit allen benötigten Routen und Extensions.
+
+    Args:
+        config (dict, optional): Zusätzliche Konfiguration für Flask (überschreibt Defaults).
+
+    Returns:
+        Flask: Die initialisierte Flask-Applikation.
+    """
     app = Flask(
         __name__,
         template_folder="templates",
@@ -36,22 +56,27 @@ def create_app(config: dict = None) -> Flask:
     if config:
         app.config.update(config)
 
-    # Extensions
+    # Extensions initialisieren
     db.init_app(app)
     login_mgr = LoginManager()
     login_mgr.login_view = "login"
     login_mgr.init_app(app)
 
-    # Tabellen (bei Start)
+    # Datenbank-Tabellen bei App-Start anlegen
     with app.app_context():
         db.create_all()
 
     @login_mgr.user_loader
-    def load_user(user_id):
+    def load_user(user_id: str) -> User:
+        """Callback für flask-login, um den aktuellen Benutzer anhand seiner ID zu laden."""
         return User.query.get(int(user_id))
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():
+        """
+        GET:  Liefert die Registrierungsseite.
+        POST: Legt bei gültigen Eingaben einen neuen User an und loggt ihn ein.
+        """
         if request.method == 'POST':
             username = request.form['username'].strip()
             password = request.form['password']
@@ -71,6 +96,10 @@ def create_app(config: dict = None) -> Flask:
 
     @app.route('/login', methods=['GET', 'POST'])
     def login():
+        """
+        GET:  Liefert die Login-Seite.
+        POST: Prüft Zugangsdaten und loggt den User ein.
+        """
         if request.method == 'POST':
             username = request.form['username'].strip()
             password = request.form['password']
@@ -85,15 +114,28 @@ def create_app(config: dict = None) -> Flask:
     @app.route('/logout')
     @login_required
     def logout():
+        """Loggt den aktuellen Benutzer aus und leitet zur Login-Seite weiter."""
         logout_user()
         return redirect(url_for('login'))
 
     @app.route('/')
     @login_required
     def index():
+        """Startseite der Anwendung; zeigt das Dashboard mit Benutzernamen."""
         return render_template('index.html', username=current_user.username)
 
-    def _get_api_key(api_url, provided_key, model):
+    def _get_api_key(api_url: str, provided_key: str, model: str) -> str:
+        """
+        Liest bestehenden APIKey aus der DB oder speichert einen neuen, wenn provided_key gesetzt ist.
+
+        Args:
+            api_url (str): Basis-URL des AI-Service.
+            provided_key (str): Neuer API-Schlüssel vom Frontend (oder leer).
+            model (str): Optionaler Modellname.
+
+        Returns:
+            str: Der final zu nutzende API-Key.
+        """
         if provided_key:
             rec = APIKey.query.filter_by(
                 user_id=current_user.id,
@@ -112,6 +154,7 @@ def create_app(config: dict = None) -> Flask:
                 db.session.add(rec)
             db.session.commit()
             return provided_key
+
         rec = APIKey.query.filter_by(
             user_id=current_user.id,
             api_url=api_url
@@ -121,44 +164,37 @@ def create_app(config: dict = None) -> Flask:
     @app.route('/plan', methods=['POST'])
     @login_required
     def plan():
-        data = request.json or {}
-        api_url      = data.get('api_url', '').strip()
-        api_key      = data.get('api_key', '').strip()
-        model        = data.get('model', '').strip()
-        project_name = data.get('project_name', '').strip()
-        project_desc = data.get('project_desc', '').strip()
-        project_path = data.get('project_path', '').strip()
+        """
+        Erzeugt einen Projektplan basierend auf Name & Beschreibung,
+        speichert ihn und gibt Pfad + Text zurück.
+        """
+        data    = request.json or {}
+        api_url = data.get('api_url', '').strip()
+        api_key = data.get('api_key', '').strip()
+        model   = data.get('model', '').strip()
+        project = data.get('project', '').strip()
 
-        # Validierung aller erforderlichen Felder
-        if not api_url or not project_name or not project_desc or not project_path:
-            return jsonify({
-                "error": "API-URL, Projektname, Beschreibung & Pfad nötig"
-            }), 400
+        # Validierung: nur API-URL und Projekt (Name/Beschreibung)
+        if not api_url or not project:
+            return jsonify({"error": "API-URL, Projektname & Beschreibung nötig"}), 400
 
         key = _get_api_key(api_url, api_key, model)
         try:
-            # Basis-Pfad an create_project_structure übergeben
-            project_folder = create_project_structure(
-                project_name,
-                base_path=project_path
-            )
-            plan_text = generate_project_plan(api_url, key, project_name, model)
+            project_folder = create_project_structure(project)
+            plan_text      = generate_project_plan(api_url, key, project, model)
             save_plan(project_folder, plan_text)
-            # Logging: Eingabe ist jetzt die Projektbeschreibung
-            save_response(project_folder, project_desc, plan_text)
-            return jsonify({
-                "plan": plan_text,
-                "project_folder": project_folder
-            }), 200
+            save_response(project_folder, project, plan_text)
+            return jsonify({"plan": plan_text, "project_folder": project_folder}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-
-    # Rest der Endpunkte bleibt unverändert…
-    # /tickets, /generate_tests, /generate_code, /structure, /file_content
 
     @app.route('/tickets', methods=['POST'])
     @login_required
     def tickets():
+        """
+        Generiert Tickets aus einem vorhandenen Projektplan-Text,
+        speichert sie und liefert die Liste zurück.
+        """
         data           = request.json or {}
         api_url        = data.get('api_url', '').strip()
         api_key        = data.get('api_key', '').strip()
@@ -174,7 +210,7 @@ def create_app(config: dict = None) -> Flask:
             tickets = generate_tickets(api_url, key, plan_text, model)
             save_tickets(project_folder, tickets)
             save_response(project_folder, plan_text, str(tickets))
-            return jsonify(tickets=tickets)
+            return jsonify(tickets=tickets), 200
         except ValueError as e:
             return jsonify(error=str(e)), 500
         except Exception:
@@ -183,12 +219,17 @@ def create_app(config: dict = None) -> Flask:
     @app.route('/generate_tests', methods=['POST'])
     @login_required
     def gen_tests():
+        """
+        Generiert pytest-Tests für ein einzelnes Ticket,
+        speichert die Tests und gibt Pfad & Inhalt zurück.
+        """
         data           = request.json or {}
         api_url        = data.get('api_url', '').strip()
         api_key        = data.get('api_key', '').strip()
         model          = data.get('model', '').strip()
         project_folder = data.get('project_folder', '').strip()
         ticket_obj     = data.get('ticket')
+
         if not api_url or not project_folder or not ticket_obj:
             return jsonify(error="API-URL, Projektordner und Ticket erforderlich."), 400
 
@@ -197,19 +238,24 @@ def create_app(config: dict = None) -> Flask:
             tests_md   = generate_tests(api_url, key, ticket_obj, model)
             tests_file = save_tests(project_folder, ticket_obj["file_path"], tests_md)
             save_response(project_folder, ticket_obj["file_path"], tests_md)
-            return jsonify(tests=tests_md, saved_test=tests_file)
+            return jsonify(tests=tests_md, saved_test=tests_file), 200
         except Exception as e:
             return jsonify(error=str(e)), 500
 
     @app.route('/generate_code', methods=['POST'])
     @login_required
     def gen_code():
+        """
+        Generiert Code für ein einzelnes Ticket,
+        speichert die Datei und gibt Pfad & Inhalt zurück.
+        """
         data           = request.json or {}
         api_url        = data.get('api_url', '').strip()
         api_key        = data.get('api_key', '').strip()
         model          = data.get('model', '').strip()
         project_folder = data.get('project_folder', '').strip()
         ticket_obj     = data.get('ticket')
+
         if not api_url or not project_folder or not ticket_obj:
             return jsonify(error="API-URL, Projektordner und Ticket erforderlich."), 400
 
@@ -218,15 +264,19 @@ def create_app(config: dict = None) -> Flask:
             code_md   = generate_code_for_ticket(api_url, key, project_folder, ticket_obj, model)
             code_file = save_code(project_folder, ticket_obj["file_path"], code_md)
             save_response(project_folder, ticket_obj["file_path"], code_md)
-            return jsonify(code=code_md, saved_to=code_file)
+            return jsonify(code=code_md, saved_to=code_file), 200
         except Exception as e:
             return jsonify(error=str(e)), 500
 
     @app.route('/structure', methods=['POST'])
     @login_required
     def structure():
+        """
+        Gibt die Ordner- und Dateistruktur des Projekts als JSON-Tree zurück.
+        """
         data           = request.json or {}
         project_folder = data.get('project_folder', '').strip()
+
         if not project_folder:
             return jsonify(error="Projektordner erforderlich."), 400
 
@@ -241,14 +291,18 @@ def create_app(config: dict = None) -> Flask:
                 node.setdefault(d, {})
             for f in files:
                 node[f] = None
-        return jsonify(structure=tree)
+        return jsonify(structure=tree), 200
 
     @app.route('/file_content', methods=['POST'])
     @login_required
     def file_content():
+        """
+        Liest den Inhalt einer Datei im Projektverzeichnis und liefert ihn als Text zurück.
+        """
         data           = request.json or {}
         project_folder = data.get('project_folder', '').strip()
         file_path      = data.get('file_path', '').strip()
+
         if not project_folder or not file_path:
             return jsonify(error="Projektordner und file_path erforderlich."), 400
 
@@ -258,9 +312,10 @@ def create_app(config: dict = None) -> Flask:
                 content = f.read()
         except Exception as e:
             return jsonify(error=str(e)), 500
-        return jsonify(content=content)
+        return jsonify(content=content), 200
 
     return app
+
 
 if __name__ == "__main__":
     app = create_app()
