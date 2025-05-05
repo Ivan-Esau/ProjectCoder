@@ -1,9 +1,24 @@
+"""
+core/api_types.py
+
+Dieses Modul enthält Hilfsfunktionen zur Erkennung des Typs einer AI-API anhand ihrer Basis-URL.
+"""
+
+from urllib.parse import urlparse
+
+
 def detect_api_type(api_url: str) -> str:
-    if "openai.com" in api_url:
+
+    parsed = urlparse(api_url)
+    host = parsed.netloc.lower()
+
+    # Überprüfe, ob die Host-Domain zu einer bekannten API gehört
+    if "api.openai.com" in host:
         return "openai"
-    elif "generativelanguage.googleapis.com" in api_url:
+    if "api.gemini.google.com" in host:
         return "gemini"
-    elif "localhost" in api_url or "ollama" in api_url:
+    if "ollama.com" in host:
         return "ollama"
-    else:
-        return "unknown"
+
+    # Fallback, falls kein bekannter Typ erkannt wurde
+    return "unknown"
