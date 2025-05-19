@@ -1,6 +1,4 @@
 """
-storage/code_storage.py
-
 Dieses Modul stellt Funktionen zum Speichern von generiertem Code auf dem Dateisystem bereit.
 Es extrahiert Code aus Markdown-Fences und legt die Quelldateien unter `<project_folder>/src/` ab.
 """

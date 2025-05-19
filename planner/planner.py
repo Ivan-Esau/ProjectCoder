@@ -1,6 +1,4 @@
 """
-planner.py
-
 Dieses Modul bietet Funktionen zur Generierung von Projektplänen
 auf Basis einer textuellen Projektbeschreibung.
 """

@@ -1,6 +1,4 @@
 """
-storage/test_storage.py
-
 Dieses Modul bietet eine Funktion zum Speichern generierter pytest-Tests
 im `tests/`-Ordner des Projekts.
 """

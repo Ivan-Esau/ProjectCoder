@@ -1,6 +1,4 @@
 """
-code_generator.py
-
 Dieses Modul enthält Funktionen zum Generieren von Code-Dateien basierend auf
 Tickets, in denen Datei-Pfad, Beschreibung und Anforderungen definiert sind.
 """

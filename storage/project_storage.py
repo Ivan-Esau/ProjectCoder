@@ -1,6 +1,4 @@
 """
-storage/project_storage.py
-
 Dieses Modul verwaltet das Anlegen neuer Projektordner mit
 Standardstruktur und Grunddateien wie README und pytest.ini.
 """

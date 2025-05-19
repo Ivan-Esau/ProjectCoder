@@ -1,5 +1,3 @@
-# web_app.py
-
 """
 Dieses Modul definiert und konfiguriert die Flask-Anwendung für das Projekt-Management-Tool.
 Es beinhaltet:
@@ -47,7 +45,6 @@ def create_app(config: dict = None) -> Flask:
         static_folder="static"
     )
 
-    # Grund-Konfiguration
     app.config.update(
         SECRET_KEY="replace-with-your-secret",
         SQLALCHEMY_DATABASE_URI="sqlite:///users.db",
@@ -56,13 +53,11 @@ def create_app(config: dict = None) -> Flask:
     if config:
         app.config.update(config)
 
-    # Extensions initialisieren
     db.init_app(app)
     login_mgr = LoginManager()
     login_mgr.login_view = "login"
     login_mgr.init_app(app)
 
-    # Datenbank-Tabellen bei App-Start anlegen
     with app.app_context():
         db.create_all()
 
@@ -164,27 +159,32 @@ def create_app(config: dict = None) -> Flask:
     @app.route('/plan', methods=['POST'])
     @login_required
     def plan():
-        """
-        Erzeugt einen Projektplan basierend auf Name & Beschreibung,
-        speichert ihn und gibt Pfad + Text zurück.
-        """
-        data    = request.json or {}
-        api_url = data.get('api_url', '').strip()
-        api_key = data.get('api_key', '').strip()
-        model   = data.get('model', '').strip()
-        project = data.get('project', '').strip()
+        data         = request.json or {}
+        api_url      = data.get('api_url', '').strip()
+        api_key      = data.get('api_key', '').strip()
+        model        = data.get('model', '').strip()
+        name         = data.get('project_name', '').strip()
+        desc         = data.get('project_desc', '').strip()
+        base_path    = data.get('project_path', '').strip()
 
-        # Validierung: nur API-URL und Projekt (Name/Beschreibung)
-        if not api_url or not project:
+        # Validierung: API-URL, Name und Beschreibung erforderlich
+        if not api_url or not name or not desc:
             return jsonify({"error": "API-URL, Projektname & Beschreibung nötig"}), 400
 
         key = _get_api_key(api_url, api_key, model)
         try:
-            project_folder = create_project_structure(project)
-            plan_text      = generate_project_plan(api_url, key, project, model)
+            # create_project_structure nimmt jetzt auch base_path entgegen
+            project_folder = create_project_structure(name, base_path=base_path)
+            project_text   = f"{name}\n{desc}"
+            plan_text      = generate_project_plan(api_url, key, project_text, model)
+
             save_plan(project_folder, plan_text)
-            save_response(project_folder, project, plan_text)
-            return jsonify({"plan": plan_text, "project_folder": project_folder}), 200
+            save_response(project_folder, project_text, plan_text)
+            return jsonify({
+                "plan":           plan_text,
+                "project_folder": project_folder
+            }), 200
+
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

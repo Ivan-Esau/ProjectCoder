@@ -1,6 +1,4 @@
 """
-storage/saver.py
-
 Dieses Modul speichert alle Roh-Antworten (Inputs und Outputs) der LLM-Aufrufe
 mit Timestamp in JSON-Dateien unter `logs/` oder einem Fallback-Verzeichnis.
 """

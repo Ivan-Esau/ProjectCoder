@@ -1,5 +1,3 @@
-# core/api_types.py
-
 """
 Dieses Modul enthält Hilfsfunktionen zur Erkennung des Typs einer AI-API anhand ihrer Basis-URL.
 """

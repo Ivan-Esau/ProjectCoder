@@ -1,6 +1,4 @@
 """
-test_generator.py
-
 Dieses Modul enthält Funktionen zum Generieren von Unit-Tests
 für Code-Dateien basierend auf Ticket-Informationen.
 """

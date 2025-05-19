@@ -1,6 +1,4 @@
 """
-storage/plan_storage.py
-
 Dieses Modul bietet eine Funktion zum Speichern des Projektplans als Textdatei
 unter `<project_folder>/docs/plan.txt`.
 """

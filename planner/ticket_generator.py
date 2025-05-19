@@ -1,6 +1,4 @@
 """
-ticket_generator.py
-
 Dieses Modul bietet Funktionen zum Erzeugen von Tickets
 aus einem textuellen Projektplan mithilfe eines LLM.
 """

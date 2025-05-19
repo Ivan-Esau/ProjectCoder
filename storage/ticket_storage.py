@@ -1,6 +1,4 @@
 """
-storage/ticket_storage.py
-
 Dieses Modul speichert generierte Tickets als JSON-Array-Datei
 unter `<project_folder>/tickets/tickets.json`.
 """
