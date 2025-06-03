@@ -28,9 +28,8 @@ def test_parse_response_unknown_type():
     assert result == str(obj)
 
 def test_parse_response_malformed_key(monkeypatch):
-    # Simuliere, dass der Zugriff auf response_json eine Exception wirft
+    # Ein leeres Dict löst einen KeyError aus und testet so den Error-Pfad
     bad_json = {}
-    # monkeypatch, damit der KeyError propagiert wird und im except abgefangen wird
     result = parse_response("openai", bad_json)
     assert result.startswith("[Parse error]:")
 
