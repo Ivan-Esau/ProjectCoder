@@ -20,18 +20,23 @@ def test_send_llm_request_with_api_key(monkeypatch):
         calls['url'] = url
         calls['headers'] = headers
         calls['json'] = json
-        # Simuliere eine OpenAI-Antwortstruktur
+        # Simuliere eine MCP-Antwortstruktur
         return DummyResponse({
-            "choices": [
-                {"message": {"content": "Antwort vom LLM"}}
-            ]
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "content": [
+                    {"type": "text", "text": "Antwort vom LLM"}
+                ],
+                "isError": False
+            }
         })
 
     # Patch requests.post in unserem Modul
     monkeypatch.setattr("core.request_handler.requests.post", fake_post)
 
     result = send_llm_request(
-        api_url="https://api.openai.com/v1/chat/completions",
+        api_url="https://mcp.example.com",
         api_key="mein-test-key",
         user_input="Hallo Welt",
         model="test-model"
@@ -41,7 +46,7 @@ def test_send_llm_request_with_api_key(monkeypatch):
     assert result == "Antwort vom LLM"
 
     # URL korrekt übergeben?
-    assert calls['url'] == "https://api.openai.com/v1/chat/completions"
+    assert calls['url'] == "https://mcp.example.com"
 
     # Authorization-Header gesetzt?
     assert calls['headers']["Authorization"] == "Bearer mein-test-key"
@@ -49,9 +54,14 @@ def test_send_llm_request_with_api_key(monkeypatch):
 
     # Payload entspricht build_payload für openai
     expected_payload = {
-        "model": "test-model",
-        "messages": [{"role": "user", "content": "Hallo Welt"}],
-        "temperature": 0.7
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "meta": None,
+            "name": "generateText",
+            "arguments": {"prompt": "Hallo Welt", "model": "test-model"}
+        }
     }
     assert calls['json'] == expected_payload
 
@@ -60,23 +70,27 @@ def test_send_llm_request_without_api_key(monkeypatch):
     # Stub für requests.post
     def fake_post(url, headers, json):
         calls['headers'] = headers
-        # Simuliere eine Gemini-Antwortstruktur
         return DummyResponse({
-            "candidates": [
-                {"content": {"parts": [{"text": "Gemini-Antwort"}]}}
-            ]
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "content": [
+                    {"type": "text", "text": "Gemini-Antwort"}
+                ],
+                "isError": False
+            }
         })
 
     monkeypatch.setattr("core.request_handler.requests.post", fake_post)
 
     result = send_llm_request(
-        api_url="https://generativelanguage.googleapis.com/v1beta/models/foo:generateContent",
+        api_url="https://mcp.example.com",
         api_key="",
         user_input="Test",
         model=None
     )
 
-    # Rückgabe der Gemini-Antwort
+    # Rückgabe der Text-Antwort
     assert result == "Gemini-Antwort"
 
     # Wenn kein api_key angegeben, darf es keinen Authorization-Header geben
@@ -95,7 +109,7 @@ def test_send_llm_request_http_error(monkeypatch):
 
     with pytest.raises(Exception) as excinfo:
         send_llm_request(
-            api_url="https://api.openai.com/v1/chat/completions",
+            api_url="https://mcp.example.com",
             api_key="key",
             user_input="x",
             model="m"
