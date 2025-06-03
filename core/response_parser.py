@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 def parse_response(api_type: str, response_json: Dict[str, Any]) -> Any:
     """
-    Parsed die JSON-Antwort einer AI-API und extrahiert den eigentlichen Inhalt.
+    Parst die JSON-Antwort einer AI-API und extrahiert den eigentlichen Inhalt.
 
     Unterstützte API-Typen:
       - "openai" : Erwartet ein 'choices'-Array mit einer 'message.content'
