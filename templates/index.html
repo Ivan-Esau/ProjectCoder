@@ -29,6 +29,12 @@
       <input type="text" id="api_url"  placeholder="API-URL">
       <input type="text" id="api_key" placeholder="API-Key (optional)">
       <input type="text" id="model"   placeholder="Modell (optional)">
+
+      <h3>GitLab</h3>
+      <input type="text" id="gitlab_url" placeholder="GitLab-URL (optional)">
+      <input type="text" id="gitlab_project_id" placeholder="Projekt-ID">
+      <input type="text" id="gitlab_token" placeholder="Token">
+      <button id="gitlab-btn" disabled>Issues erstellen</button>
     </aside>
 
     <main class="ide-main">
@@ -276,6 +282,31 @@
       }
 
       await loadStructure();
+      btn.disabled = false;
+      document.getElementById("gitlab-btn").disabled = false;
+    };
+
+    document.getElementById("gitlab-btn").onclick = async () => {
+      const btn = document.getElementById("gitlab-btn");
+      btn.disabled = true;
+      btn.textContent = "⏳ Erstelle Issues…";
+      const resp = await fetch("/gitlab_issues", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          project_folder: projectFolder,
+          gitlab_url: document.getElementById("gitlab_url").value.trim(),
+          gitlab_project_id: document.getElementById("gitlab_project_id").value.trim(),
+          gitlab_token: document.getElementById("gitlab_token").value.trim()
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && Array.isArray(data.issues)) {
+        btn.textContent = "Issues erstellt";
+      } else {
+        btn.textContent = "Fehler";
+        alert(data.error || resp.statusText);
+      }
       btn.disabled = false;
     };
   </script>
