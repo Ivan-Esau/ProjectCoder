@@ -159,13 +159,21 @@ def create_app(config: dict = None) -> Flask:
     @app.route('/plan', methods=['POST'])
     @login_required
     def plan():
-        data         = request.json or {}
-        api_url      = data.get('api_url', '').strip()
-        api_key      = data.get('api_key', '').strip()
-        model        = data.get('model', '').strip()
-        name         = data.get('project_name', '').strip()
-        desc         = data.get('project_desc', '').strip()
-        base_path    = data.get('project_path', '').strip()
+        data      = request.json or {}
+        api_url   = data.get('api_url', '').strip()
+        api_key   = data.get('api_key', '').strip()
+        model     = data.get('model', '').strip()
+        name      = data.get('project_name', '').strip()
+        desc      = data.get('project_desc', '').strip()
+        project   = data.get('project', '').strip()
+        base_path = data.get('project_path', '').strip()
+
+        # Fallback: unterstützt alte API mit einfachem "project"-Feld
+        if project:
+            if not name:
+                name = project
+            if not desc:
+                desc = project
 
         # Validierung: API-URL, Name und Beschreibung erforderlich
         if not api_url or not name or not desc:
@@ -173,8 +181,11 @@ def create_app(config: dict = None) -> Flask:
 
         key = _get_api_key(api_url, api_key, model)
         try:
-            # create_project_structure nimmt jetzt auch base_path entgegen
-            project_folder = create_project_structure(name, base_path=base_path)
+            # create_project_structure nimmt optional einen Basis-Pfad entgegen
+            if base_path:
+                project_folder = create_project_structure(name, base_path)
+            else:
+                project_folder = create_project_structure(name)
             project_text   = f"{name}\n{desc}"
             plan_text      = generate_project_plan(api_url, key, project_text, model)
 
