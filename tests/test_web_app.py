@@ -41,7 +41,11 @@ def test_plan_endpoint_requires_auth(client):
 
 def test_plan_endpoint_bad_request(client):
     client = register_and_login(client)
-    rv = client.post("/plan", json={"api_url": "", "project": ""})
+    rv = client.post("/plan", json={
+        "api_url": "",
+        "project_name": "",
+        "project_desc": ""
+    })
     assert rv.status_code == 400
     # Now returns JSON error
     assert rv.get_json() == {"error": "API-URL, Projektname & Beschreibung nötig"}
@@ -49,10 +53,11 @@ def test_plan_endpoint_bad_request(client):
 def test_plan_success(monkeypatch, client):
     client = register_and_login(client)
     monkeypatch.setattr("web_app.generate_project_plan", lambda u,k,p,m: "MEIN_PLAN")
-    monkeypatch.setattr("web_app.create_project_structure", lambda proj: "/tmp/proj1")
+    monkeypatch.setattr("web_app.create_project_structure", lambda name, base_path=None: "/tmp/proj1")
     rv = client.post("/plan", json={
         "api_url": "u",
-        "project": "Mein_Testprojekt",
+        "project_name": "Mein_Testprojekt",
+        "project_desc": "Beschreibung",
         "model": "gpt-test"
     })
     assert rv.status_code == 200
